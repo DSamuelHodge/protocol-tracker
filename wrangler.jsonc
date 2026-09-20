@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "protocol-tracker",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-17",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Only /api/* runs the Worker; everything else is served straight from static assets.
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "protocol-tracker",
+      "database_id": "58401803-3b9c-4cad-964b-13674ed80312"
+    }
+  ],
+  "vars": {
+    "DEFAULT_TZ": "America/New_York"
+  }
+  // Secret (not stored here):  npx wrangler secret put API_TOKEN
+}

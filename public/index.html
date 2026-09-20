@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F7F5F0">
+  <title>Protocol tracker</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="masthead">
+    <img src="/brand/mark-ink.png" alt="" width="23" height="44">
+    <p>Protocol tracker</p>
+  </div>
+
+  <header class="top">
+    <div class="top-inner">
+      <div class="datebar">
+        <button id="prev" class="icon" aria-label="Previous day">&lsaquo;</button>
+        <div class="daytitle">
+          <h1 id="dayTitle">Today</h1>
+          <button id="todayBtn" class="link" hidden>Back to today</button>
+        </div>
+        <button id="next" class="icon" aria-label="Next day">&rsaquo;</button>
+        <button id="openSettings" class="icon" aria-label="Settings">&#9881;</button>
+      </div>
+      <div class="scorebar">
+        <p id="scoreText" class="score">&nbsp;</p>
+        <progress id="scoreMeter" max="1" value="0" aria-label="Habits completed"></progress>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section aria-labelledby="h-habits">
+      <h2 id="h-habits">Habits</h2>
+      <p class="lede">Most score themselves from your meals and quick actions. Tap one to override it; a label on the right shows what set it.</p>
+      <ul id="habitList" class="habits"></ul>
+    </section>
+
+    <section aria-labelledby="h-quick">
+      <h2 id="h-quick">Right now</h2>
+      <p class="lede">One tap, stamped with the current time.</p>
+      <div class="quick" id="quick">
+        <button data-kind="first_meal">First meal</button>
+        <button data-kind="last_meal">Meal closed</button>
+        <button data-kind="walk">Walk done</button>
+        <button data-kind="training">Trained</button>
+      </div>
+      <p id="quickNote" class="hint" hidden>Quick actions use the current time, so they work on today only. Set meal times below to fix a past day.</p>
+      <ul id="eventList" class="events"></ul>
+    </section>
+
+    <section aria-labelledby="h-meals">
+      <h2 id="h-meals">Meals</h2>
+      <p class="lede">Protein and carbs in grams, with the time you ate.</p>
+      <div id="mealForms" class="meals"></div>
+      <p id="mealTotals" class="totals"></p>
+    </section>
+
+    <section aria-labelledby="h-glucose">
+      <h2 id="h-glucose">Glucose</h2>
+      <div id="glucoseBody"></div>
+    </section>
+
+    <section aria-labelledby="h-trend">
+      <h2 id="h-trend">Last 14 days</h2>
+      <p class="lede">Judge the trend, not a single day.</p>
+      <div id="trendBody"></div>
+      <form id="weightForm" class="weight">
+        <h3>Weigh-in for this day</h3>
+        <label>Weight <input name="weight" type="number" inputmode="decimal" step="0.1" min="20" placeholder="lb" required></label>
+        <label>Waist <input name="waist" type="number" inputmode="decimal" step="0.1" min="0" placeholder="in"></label>
+        <button type="submit">Save weigh-in</button>
+      </form>
+    </section>
+  </main>
+
+  <p id="toast" class="toast" role="status" aria-live="polite"></p>
+
+  <dialog id="settingsDlg" aria-labelledby="h-settings">
+    <h2 id="h-settings">Settings</h2>
+    <p id="settingsMsg" role="status" class="hint"></p>
+
+    <fieldset>
+      <legend>Access token</legend>
+      <label>Token <input id="tokenInput" type="password" autocomplete="off" spellcheck="false"></label>
+      <button type="button" id="saveToken">Save token</button>
+      <p class="hint">Stored in this browser only. It is the API_TOKEN secret you set on the Worker.</p>
+    </fieldset>
+
+    <form id="settingsForm">
+      <fieldset>
+        <legend>Targets</legend>
+        <label>Carb cap (g/day) <input name="carb_cap" type="number" min="0" step="1"></label>
+        <label>Protein per meal (g) <input name="protein_per_meal" type="number" min="0" step="1"></label>
+        <label>Longest eating window (h) <input name="window_hours" type="number" min="1" step="0.5"></label>
+        <label>Sleep goal (h) <input name="sleep_hours" type="number" min="1" step="0.5"></label>
+        <label>Walks per day <input name="walks_needed" type="number" min="0" step="1"></label>
+        <label>Time zone <input name="tz" type="text" spellcheck="false"></label>
+      </fieldset>
+      <fieldset>
+        <legend>Training days</legend>
+        <div id="trainingDays" class="checks"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Habits you are tracking</legend>
+        <div id="activeHabits" class="checks"></div>
+        <p class="hint">Ramp in: start with window, walks and protein, then add the rest. Untracked habits are hidden and don't count toward the score.</p>
+      </fieldset>
+      <button type="submit">Save settings</button>
+    </form>
+
+    <fieldset>
+      <legend>Glucose data</legend>
+      <label>Import a Dexcom Clarity CSV <input id="csvFile" type="file" accept=".csv,text/csv"></label>
+      <p id="importMsg" class="hint" role="status"></p>
+      <button type="button" id="exportBtn" class="ghost">Download last 28 days as CSV</button>
+    </fieldset>
+
+    <button type="button" id="closeSettings" class="ghost">Close</button>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

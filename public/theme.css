@@ -1,0 +1,68 @@
+/* ==========================================================================
+   THEME: The Minimalist Japandi Framework (Derrick S. Hodge brand guide)
+   Every value below comes from brand-guide.html unless marked "derived".
+   style.css reads only these variables, so this is the one file to change.
+   ========================================================================== */
+
+/* Typefaces, self-hosted (Latin subset, variable). Inter: structure and UI.
+   Newsreader: body copy, headings, editorial pacing. */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader-latin-wght-italic.woff2") format("woff2");
+  font-weight: 200 800; font-style: italic; font-display: swap;
+}
+
+:root {
+  /* palette */
+  --ink:       #1A1A1A;  /* Sumi Ink */
+  --plaster:   #F7F5F0;  /* Warm Plaster */
+  --plaster-2: #FBFAF7;
+  --stone:     #E5E2DC;  /* Muted Stone */
+  --wood:      #C2A687;  /* Hinoki Wood */
+  --wood-deep: #A9875F;
+  --sage:      #8A9A86;  /* Sage Mist */
+
+  /* ink tints and hairlines */
+  --line:      rgba(26, 26, 26, 0.13);
+  --line-soft: rgba(26, 26, 26, 0.08);
+  --ink-60:    rgba(26, 26, 26, 0.62);
+  --ink-40:    rgba(26, 26, 26, 0.42);
+
+  /* type */
+  --serif: "Newsreader", Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --sans:  "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+
+  /* shape and layout */
+  --radius: 6px;
+  --maxw: 760px;
+  --gutter: 20px;
+
+  /* page ground: the guide's radial plaster-to-stone wash */
+  --page-bg: radial-gradient(120% 70% at 50% -8%, var(--plaster-2) 0%, var(--plaster) 42%, var(--stone) 100%);
+
+  /* semantic aliases used by style.css */
+  --bg: var(--plaster);
+  --surface: var(--plaster-2);
+  --text: var(--ink);
+  --text-2: var(--ink-60);
+  --rule: var(--line);
+  --rule-soft: var(--line-soft);
+  --primary: var(--ink);
+  --primary-ink: var(--plaster);
+  --done: var(--sage);          /* ink on sage is about 5.8:1 */
+  --done-ink: var(--ink);
+  --plaster-glass: rgba(247, 245, 240, 0.94);   /* derived: sticky bar */
+  --sage-wash: rgba(138, 154, 134, 0.22);       /* derived: chart band */
+
+  color-scheme: light;   /* the guide defines a light system only */
+}
