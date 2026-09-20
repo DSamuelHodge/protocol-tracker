@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F7F5F0">
+  <title>Dietary and fitness tips · Protocol tracker</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="masthead">
+    <img src="/brand/mark-ink.png" alt="" width="23" height="44">
+    <p>Protocol tracker</p>
+  </div>
+
+  <header class="top">
+    <div class="top-inner tips-bar">
+      <a class="back" href="/">Back to tracker</a>
+      <h1>Dietary and fitness tips</h1>
+    </div>
+  </header>
+
+  <main>
+    <nav class="pagenav" aria-label="On this page">
+      <a href="#dietary">Dietary</a>
+      <a href="#fitness">Fitness</a>
+    </nav>
+
+    <section aria-labelledby="h-safety">
+      <h2 id="h-safety">Before you read</h2>
+      <blockquote class="safety">
+        These are general education, not medical advice. Check with your doctor before changing diet or exercise, especially if you take diabetes medication (including SGLT2 inhibitors), blood-pressure medication or diuretics, have kidney disease, heart disease, or a history of disordered eating, or are pregnant.
+      </blockquote>
+    </section>
+
+    <section aria-labelledby="h-insights">
+      <h2 id="h-insights">From your data</h2>
+      <p class="lede">Computed from your last 14 days in the tracker.</p>
+      <div id="insights"><p class="hint">Loading insights…</p></div>
+    </section>
+
+    <div id="tipSections"></div>
+    <noscript><p class="empty">This page needs JavaScript to load the tips.</p></noscript>
+  </main>
+
+  <script src="/tips.js"></script>
+</body>
+</html>

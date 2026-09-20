@@ -238,7 +238,7 @@ async function rangeView(env, S, days, to) {
       day, score: d.score, habits: Object.fromEntries(HABITS.map((h) => [h, d.habits[h].state])),
       protein_total: d.protein_total, carbs_total: d.carbs_total,
       weight: wmap[day]?.weight ?? null, waist: wmap[day]?.waist ?? null,
-      glucose_avg: g?.avg ?? null, glucose_fasting_avg: g?.fasting_avg ?? null, glucose_in_range_pct: g?.in_range_pct ?? null,
+      glucose_avg: g?.avg ?? null, glucose_fasting_avg: g?.fasting_avg ?? null, glucose_in_range_pct: g?.in_range_pct ?? null, glucose_min: g?.min ?? null,
       meal1_rise: g?.per_meal.find((m) => m.slot === 1)?.rise ?? null, meal2_rise: g?.per_meal.find((m) => m.slot === 2)?.rise ?? null,
     });
   }

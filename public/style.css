@@ -158,3 +158,29 @@ legend { padding: 0 6px; font: 600 13px var(--sans); }
   .meal { grid-template-columns: 1fr 1fr; }
   .meal label:first-of-type { grid-column: 1 / -1; }
 }
+
+/* tips page */
+.tips-bar { display: flex; align-items: center; gap: 12px; }
+.tips-bar h1 { flex: 1; text-align: center; }
+.tips-bar .back { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; font: 600 13px/1 var(--sans); color: var(--text); }
+.masthead-link { display: inline-block; min-height: 44px; line-height: 44px; padding: 0 16px; font-size: 13px; color: var(--text-2); }
+.pagenav { display: flex; gap: 8px; padding: 16px 0 0; }
+.pagenav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font: 600 13px/1 var(--sans); color: var(--text); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); text-decoration: none; }
+.safety { margin: 16px 0 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--wood-deep); border-radius: var(--radius); font: 400 16px/1.6 var(--serif); max-width: 60ch; }
+.legend { list-style: none; padding: 0; margin: 0 0 20px; display: grid; gap: 6px; max-width: 60ch; }
+.legend li { font-size: 13px; color: var(--text-2); }
+.legend li > span { font-weight: 600; color: var(--text); }
+.tip { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 20px 20px 16px; margin-bottom: 16px; scroll-margin-top: 120px; }
+.tip-summary { font: 400 16px/1.6 var(--serif); margin: 8px 0 12px; max-width: 60ch; }
+.how { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 6px; font-size: 14.5px; max-width: 60ch; }
+.evidence { font: 600 12.5px/1.5 var(--sans); color: var(--text); margin-bottom: 8px; }
+.caution { font-size: 13.5px; color: var(--text); background: var(--plaster); border: 1px solid var(--rule-soft); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; max-width: 60ch; }
+.tip details { margin-top: 8px; border-top: 1px solid var(--rule-soft); padding-top: 8px; }
+.tip summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font: 600 13px/1.4 var(--sans); color: var(--text); }
+.tip details p { font: 400 16px/1.6 var(--serif); max-width: 60ch; margin-bottom: 8px; }
+.sources { margin: 0; padding-left: 22px; font-size: 13.5px; color: var(--text-2); display: grid; gap: 4px; }
+.insight { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--sage); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; max-width: 60ch; }
+.insight p { font-size: 14px; margin-bottom: 6px; }
+.insight p:last-child { margin-bottom: 0; }
+.insight-action { color: var(--text-2); }
+.insight-links a { display: inline-block; min-height: 44px; line-height: 44px; margin-right: 12px; font-weight: 600; font-size: 13px; }

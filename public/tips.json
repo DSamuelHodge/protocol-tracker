@@ -1,0 +1,265 @@
+{
+  "version": 1,
+  "evidence_legend": {
+    "strong": "Consistent results from well-designed trials or major guidelines.",
+    "moderate": "Reasonable trials or well-understood physiology, with gaps.",
+    "limited": "Small or short studies, mixed results, or mostly mechanistic.",
+    "practical": "Working advice for sticking with the plan; not a research claim."
+  },
+  "sections": [
+    {
+      "id": "dietary",
+      "title": "Dietary",
+      "lede": "Built around two meals, a protein-first plate and a carb cap.",
+      "tips": [
+        {
+          "id": "protein-target",
+          "title": "Set protein by body weight, not by ounces",
+          "summary": "A daily target near 1.6 g per kg (about 0.7 g per lb) covers most people who lift, and it helps protect muscle while you lose fat.",
+          "how": [
+            "Multiply your weight in kg by 1.6 (or your weight in lb by 0.73) for a daily gram target.",
+            "Split it across your two meals so each lands near half.",
+            "Log grams, not portions: a 6 oz cooked steak is roughly 45 g and six eggs are roughly 36 g."
+          ],
+          "why": "In a meta-analysis of resistance-training trials, gains in lean mass leveled off around 1.6 g per kg per day, with the upper end of the confidence range near 2.2. Eating far more added little for most people. On two meals a day, hitting the target takes deliberate planning.",
+          "evidence": "strong",
+          "evidence_note": "for lean mass alongside training; less direct for fat loss.",
+          "caution": "People with kidney disease should get a protein target from their doctor.",
+          "sources": ["Morton RW et al., British Journal of Sports Medicine, 2018"]
+        },
+        {
+          "id": "protein-first-plate",
+          "title": "Eat protein and vegetables before the starchy part",
+          "summary": "Meal order can flatten the post-meal glucose rise, and it costs nothing.",
+          "how": [
+            "Start with the protein and non-starchy vegetables.",
+            "Eat any starch or sweet item last.",
+            "Compare your rise for that meal in the Glucose section over several days."
+          ],
+          "why": "Small trials, mostly in people with type 2 diabetes, found lower post-meal glucose when vegetables and protein came before carbohydrate. Results in people without diabetes are less studied, so your own CGM curve is the better test.",
+          "evidence": "limited",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "electrolytes-from-food",
+          "title": "Cover electrolytes with food first",
+          "summary": "Headache, fatigue and cramps in the first weeks of low-carb eating are often about sodium, potassium and magnesium, and food covers most of it.",
+          "how": [
+            "Salt your food to taste and drink broth.",
+            "Eat leafy greens, avocado, salmon and nuts for potassium and magnesium.",
+            "Drink water with meals, not only between them."
+          ],
+          "why": "Lower insulin makes the kidneys shed more sodium and water, so needs rise early on. The physiology is well understood, but controlled trials of electrolyte supplements for this are few.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "Kidney disease, heart failure, and blood-pressure or diuretic medication change these rules. Ask your doctor before adding potassium or magnesium supplements.",
+          "sources": []
+        },
+        {
+          "id": "carb-counting-consistency",
+          "title": "Count carbs one way, every day",
+          "summary": "A 50 g cap only means something if you measure it the same way each time.",
+          "how": [
+            "Choose total carbs or net carbs (total minus fiber) and stick with it.",
+            "Log sauces, dairy, nuts and drinks; they are where the grams hide.",
+            "Enter the same number you would enter tomorrow, and adjust the cap in Settings, not the counting."
+          ],
+          "why": "Inconsistent counting turns the carb habit into noise, and trends in your weight and glucose become hard to read.",
+          "evidence": "practical",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "fiber-and-greens",
+          "title": "Keep vegetables in the plan",
+          "summary": "A big salad or a plate of non-starchy vegetables keeps meals filling and the carb count low.",
+          "how": [
+            "Make half the plate leafy or non-starchy vegetables at both meals.",
+            "Rotate greens, crucifers, and colorful vegetables through the week.",
+            "If digestion slows, add water and fiber-rich vegetables before anything else."
+          ],
+          "why": "Vegetables add volume, fiber and micronutrients for few carbohydrate grams, and fiber supports fullness and regularity.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "sweeteners-and-cravings",
+          "title": "Test sweeteners against your own cravings",
+          "summary": "The research on non-sugar sweeteners and body weight is mixed, so treat the rule as an experiment, not a fact.",
+          "how": [
+            "Go two weeks without them and note cravings, hunger and glucose.",
+            "Reintroduce one at a time and compare.",
+            "Keep what does not change how you eat."
+          ],
+          "why": "The protocol avoids sweeteners on the theory that they keep cravings alive. That is plausible but unproven for most people.",
+          "evidence": "limited",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "alcohol-and-fasting",
+          "title": "Be careful with alcohol when little food is on board",
+          "summary": "Alcohol can lower blood glucose, mostly on an empty stomach, and it fragments sleep.",
+          "how": [
+            "If you drink, do it inside the eating window, with a meal.",
+            "Skip it before hard training days.",
+            "Watch your CGM the first few times."
+          ],
+          "why": "Alcohol slows the liver's production of new glucose, which matters most when you have not eaten for hours. It also reduces sleep quality, which undercuts recovery.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "If you take diabetes medication, ask your doctor first.",
+          "sources": []
+        },
+        {
+          "id": "early-last-meal",
+          "title": "Finish eating a few hours before bed",
+          "summary": "An early last meal suits sleep, and small trials hint at metabolic benefits.",
+          "how": [
+            "Aim to close the window at least 2 to 3 hours before bed.",
+            "Use the Meal closed button so the tracker can see your real window.",
+            "If dinner runs late, shift the whole window earlier rather than skipping protein."
+          ],
+          "why": "Short trials of early time-restricted eating reported better insulin sensitivity, but samples are small and it is unclear how much is the timing versus eating less.",
+          "evidence": "limited",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        }
+      ]
+    },
+    {
+      "id": "fitness",
+      "title": "Fitness",
+      "lede": "Strength first, walking after meals, intervals sparingly.",
+      "tips": [
+        {
+          "id": "strength-2-3x",
+          "title": "Lift two to three times a week",
+          "summary": "Strength training is the most valuable habit on the list, because it protects muscle while you lose fat.",
+          "how": [
+            "Cover legs, back, chest, shoulders and core across the week, in full-body or upper/lower sessions.",
+            "Do 2 to 4 sets of 6 to 12 reps per exercise, stopping 1 to 3 reps short of failure.",
+            "Rest 48 hours before training the same muscles hard again."
+          ],
+          "why": "US guidelines recommend muscle-strengthening activity at least 2 days a week. During a calorie deficit, resistance training plus enough protein is the main way to keep lean mass.",
+          "evidence": "strong",
+          "evidence_note": "",
+          "caution": "",
+          "sources": ["Physical Activity Guidelines for Americans, 2nd edition, US Department of Health and Human Services, 2018"]
+        },
+        {
+          "id": "progressive-overload",
+          "title": "Add reps, then add weight",
+          "summary": "Muscle keeps adapting only if the work gets slightly harder over time.",
+          "how": [
+            "Pick a rep range such as 8 to 12 for each lift.",
+            "When you hit the top of the range on every set, add the smallest available weight.",
+            "Write your lifts down; memory is unreliable."
+          ],
+          "why": "Gradual increases in load are the core principle of resistance training. This double progression scheme is one simple way to apply it.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "post-meal-walk",
+          "title": "Walk for about 10 minutes after meals",
+          "summary": "A short walk after eating blunts the post-meal glucose rise, and you can see it on your own curve.",
+          "how": [
+            "Start within about 5 to 15 minutes of finishing.",
+            "Keep it easy; a conversation pace is fine.",
+            "Prioritize the larger meal, usually dinner."
+          ],
+          "why": "In a crossover trial of 41 adults with type 2 diabetes, 10-minute walks after each meal lowered post-meal glucose about 12% more than one 30-minute walk at any time, with the biggest effect (about 22%) after the evening meal. The evidence is strongest in type 2 diabetes; it plausibly carries over, and your CGM is the better test.",
+          "evidence": "moderate",
+          "evidence_note": "strongest in type 2 diabetes.",
+          "caution": "If you have heart disease, ask your doctor about exercising right after eating.",
+          "sources": ["Reynolds AN, Mann JI, Williams S, Venn BJ, Diabetologia 2016;59(12):2572-2578"]
+        },
+        {
+          "id": "movement-base",
+          "title": "Build an easy movement base",
+          "summary": "Steady, easy movement underpins everything else and is hard to overdo.",
+          "how": [
+            "Measure your average daily steps for a week before changing anything.",
+            "Add about 1,000 steps a day every 1 to 2 weeks.",
+            "Work toward 150 to 300 minutes a week of moderate activity, including walks."
+          ],
+          "why": "Guidelines set 150 to 300 minutes of moderate activity per week for adults. Cohort studies show risk falling steeply at first and flattening around roughly 7,000 to 10,000 steps a day; that is association, not proof.",
+          "evidence": "strong",
+          "evidence_note": "for the weekly minutes; step targets are observational.",
+          "caution": "",
+          "sources": ["Physical Activity Guidelines for Americans, 2nd edition, US Department of Health and Human Services, 2018"]
+        },
+        {
+          "id": "hiit-dose",
+          "title": "One or two interval sessions a week is enough",
+          "summary": "Intervals build fitness in less time, and more is not better.",
+          "how": [
+            "After a warm-up, do 4 to 6 rounds of 30 to 60 seconds hard, then 1 to 2 minutes easy.",
+            "Keep them a day apart from heavy leg lifting.",
+            "Stop the session if you feel lightheaded or unwell."
+          ],
+          "why": "Interval training raises cardiorespiratory fitness comparably to steady cardio in less time. Adding sessions tends to add fatigue faster than benefit.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "With heart conditions or high blood pressure, ask your doctor before high-intensity work.",
+          "sources": []
+        },
+        {
+          "id": "train-fed-or-fasted",
+          "title": "Put hard sessions after your first meal if fasted feels bad",
+          "summary": "Easy walking fasted is fine; lifting and intervals often go better fed.",
+          "how": [
+            "Keep fasted-morning activity easy.",
+            "Schedule lifting and intervals after the first meal.",
+            "If you feel dizzy or weak fasted, that is your answer."
+          ],
+          "why": "Studies that match calories and protein find little difference in fat loss between fasted and fed exercise, so let performance and comfort decide.",
+          "evidence": "limited",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "recovery-sleep",
+          "title": "Protect sleep and one full rest day",
+          "summary": "Gains and fat loss both depend on recovery.",
+          "how": [
+            "Aim for 7 to 8 hours in a cool, dark room.",
+            "Take at least one full rest day a week.",
+            "When lifts stall or joints ache for two weeks, drop volume by about a third for a week."
+          ],
+          "why": "Poor sleep undermines recovery, appetite control and training quality. The deload timing is common practice rather than a tested rule.",
+          "evidence": "moderate",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        },
+        {
+          "id": "stop-signs",
+          "title": "Know when to stop",
+          "summary": "Fasting plus low carbohydrate plus hard training can occasionally leave you weak, so know your stop signs.",
+          "how": [
+            "Stop for chest pain, fainting, or severe dizziness, and get medical help if it does not settle.",
+            "Ease off for sharp joint pain.",
+            "If your CGM shows a low with symptoms, sit down, eat something with carbohydrate, and tell your doctor if it repeats."
+          ],
+          "why": "Training on an empty stomach with low electrolytes or low glucose can cause lightheadedness. Recognizing it early keeps a bad session from becoming an injury.",
+          "evidence": "practical",
+          "evidence_note": "",
+          "caution": "",
+          "sources": []
+        }
+      ]
+    }
+  ]
+}
