@@ -206,17 +206,19 @@ function glucoseStats(readings, meals, start) {
 async function dayView(env, S, day) {
   validDay(day);
   const [start, end] = dayBounds(day, S.tz);
-  const [meals, events, rows, gl, last] = await env.DB.batch([
+  const [meals, events, rows, gl, last, vit] = await env.DB.batch([
     env.DB.prepare('SELECT * FROM meals WHERE day = ? ORDER BY slot').bind(day),
     env.DB.prepare('SELECT * FROM events WHERE day = ? ORDER BY ts').bind(day),
     env.DB.prepare('SELECT habit, done, value, source FROM habit_log WHERE day = ?').bind(day),
     env.DB.prepare('SELECT ts, mgdl FROM glucose WHERE ts >= ? AND ts < ? ORDER BY ts').bind(start, end),
     env.DB.prepare('SELECT MAX(ts) AS ts FROM glucose'),
+    env.DB.prepare('SELECT metric, value FROM vitals WHERE day = ?').bind(day),
   ]);
   const d = buildDay(S, day, meals.results, events.results, rows.results);
-  const weight = await env.DB.prepare('SELECT weight, waist FROM weights WHERE day = ?').bind(day).first();
+  const weight = await env.DB.prepare('SELECT weight, waist, body_fat_pct, source FROM weights WHERE day = ?').bind(day).first();
   return {
     ...d, start, end, settings: S, weight: weight || null,
+    vitals: Object.fromEntries((vit.results || []).map((r) => [r.metric, r.value])),
     glucose: { series: gl.results.map((r) => [r.ts, r.mgdl]), stats: glucoseStats(gl.results, meals.results, start), last_ts: last.results[0]?.ts ?? null, band: [RANGE_LO, RANGE_HI] },
   };
 }
@@ -225,26 +227,32 @@ async function rangeView(env, S, days, to) {
   to = to ? validDay(to) : todayIn(S.tz);
   const from = addDays(to, -(days - 1));
   const [start] = dayBounds(from, S.tz), [, end] = dayBounds(to, S.tz);
-  const [meals, events, rows, weights, gl] = await env.DB.batch([
+  const [meals, events, rows, weights, gl, vit] = await env.DB.batch([
     env.DB.prepare('SELECT * FROM meals WHERE day BETWEEN ? AND ? ORDER BY day, slot').bind(from, to),
     env.DB.prepare('SELECT * FROM events WHERE day BETWEEN ? AND ? ORDER BY ts').bind(from, to),
     env.DB.prepare('SELECT day, habit, done, value, source FROM habit_log WHERE day BETWEEN ? AND ?').bind(from, to),
-    env.DB.prepare('SELECT day, weight, waist FROM weights WHERE day BETWEEN ? AND ? ORDER BY day').bind(from, to),
+    env.DB.prepare('SELECT day, weight, waist, body_fat_pct FROM weights WHERE day BETWEEN ? AND ? ORDER BY day').bind(from, to),
     env.DB.prepare('SELECT ts, mgdl FROM glucose WHERE ts >= ? AND ts < ? ORDER BY ts').bind(start, end),
+    env.DB.prepare('SELECT day, metric, value FROM vitals WHERE day BETWEEN ? AND ?').bind(from, to),
   ]);
   const group = (arr) => arr.reduce((m, x) => ((m[x.day] ||= []).push(x), m), {});
   const gm = group(meals.results), ge = group(events.results), gr = group(rows.results);
   const wmap = Object.fromEntries(weights.results.map((w) => [w.day, w]));
+  const vmap = {};
+  for (const r of vit.results || []) (vmap[r.day] ||= {})[r.metric] = r.value;
   const out = [];
   for (let i = 0; i < days; i++) {
     const day = addDays(from, i);
     const [s, e] = dayBounds(day, S.tz);
     const d = buildDay(S, day, gm[day] || [], ge[day] || [], gr[day] || []);
     const g = glucoseStats(gl.results.filter((r) => r.ts >= s && r.ts < e), gm[day] || [], s);
+    const v = vmap[day] || {};
     out.push({
       day, score: d.score, habits: Object.fromEntries(HABITS.map((h) => [h, d.habits[h].state])),
       protein_total: d.protein_total, carbs_total: d.carbs_total,
-      weight: wmap[day]?.weight ?? null, waist: wmap[day]?.waist ?? null,
+      weight: wmap[day]?.weight ?? null, waist: wmap[day]?.waist ?? null, body_fat_pct: wmap[day]?.body_fat_pct ?? null,
+      vitals: v,
+      steps: v.steps ?? null, sleep_hours: v.sleep_hours ?? null, sleep_score: v.sleep_score ?? null,
       glucose_avg: g?.avg ?? null, glucose_fasting_avg: g?.fasting_avg ?? null, glucose_in_range_pct: g?.in_range_pct ?? null,
       meal1_rise: g?.per_meal.find((m) => m.slot === 1)?.rise ?? null, meal2_rise: g?.per_meal.find((m) => m.slot === 2)?.rise ?? null,
     });
@@ -253,10 +261,10 @@ async function rangeView(env, S, days, to) {
 }
 
 function toCsv(range) {
-  const cols = ['day', 'score_done', 'score_total', ...HABITS, 'protein_g', 'carbs_g', 'weight', 'waist', 'glucose_avg', 'glucose_fasting_avg', 'glucose_in_range_pct', 'meal1_rise', 'meal2_rise'];
+  const cols = ['day', 'score_done', 'score_total', ...HABITS, 'protein_g', 'carbs_g', 'weight', 'waist', 'body_fat_pct', 'steps', 'sleep_hours', 'sleep_score', 'glucose_avg', 'glucose_fasting_avg', 'glucose_in_range_pct', 'meal1_rise', 'meal2_rise'];
   const lines = [cols.join(',')];
   for (const d of range.days) {
-    lines.push([d.day, d.score.done, d.score.total, ...HABITS.map((h) => d.habits[h]), d.protein_total, d.carbs_total, d.weight, d.waist, d.glucose_avg, d.glucose_fasting_avg, d.glucose_in_range_pct, d.meal1_rise, d.meal2_rise].map((v) => (v == null ? '' : v)).join(','));
+    lines.push([d.day, d.score.done, d.score.total, ...HABITS.map((h) => d.habits[h]), d.protein_total, d.carbs_total, d.weight, d.waist, d.body_fat_pct, d.steps, d.sleep_hours, d.sleep_score, d.glucose_avg, d.glucose_fasting_avg, d.glucose_in_range_pct, d.meal1_rise, d.meal2_rise].map((v) => (v == null ? '' : v)).join(','));
   }
   return lines.join('\n') + '\n';
 }
@@ -377,9 +385,14 @@ async function withingsAuthStart(env, url) {
 
 // GET /api/withings/callback?code=...&state=...  — Withings redirects the user's browser
 // here directly; state (not a Bearer token) is what proves this round-trip is legitimate.
-async function withingsCallback(env, url) {
+// Bare GET/HEAD (no params) returns 200 with no auth: Withings verifies the registered
+// URL with a HEAD request requiring a 2xx before accepting it.
+async function withingsCallback(env, url, method) {
   const code = url.searchParams.get('code'), state = url.searchParams.get('state');
-  if (!code || !state) return json({ error: 'missing code or state' }, 400);
+  if (!code || !state) {
+    if (method === 'HEAD') return new Response(null, { status: 200 });
+    return new Response('Withings callback endpoint. Start at /api/withings/auth?token=<API_TOKEN>.', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+  }
   const now = Math.floor(Date.now() / 1000);
   const row = await env.DB.prepare('SELECT state FROM withings_oauth_state WHERE state = ? AND created_at > ?').bind(state, now - WITHINGS_STATE_TTL).first();
   if (!row) return json({ error: 'invalid or expired state — restart at /api/withings/auth' }, 400);
@@ -530,7 +543,7 @@ export default {
       // redirect (yours, then Withings'), not a fetch() call — so they authenticate
       // themselves differently (see the comments on each function).
       if (url.pathname === '/api/withings/auth' && request.method === 'GET') return await withingsAuthStart(env, url);
-      if (url.pathname === '/api/withings/callback' && request.method === 'GET') return await withingsCallback(env, url);
+      if (url.pathname === '/api/withings/callback' && (request.method === 'GET' || request.method === 'HEAD')) return await withingsCallback(env, url, request.method);
       if (!(await authed(request, env))) return json({ error: 'unauthorized' }, 401);
       return await route(request, env, url);
     } catch (e) {
