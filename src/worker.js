@@ -20,7 +20,7 @@ const MAX_GLUCOSE_PER_REQUEST = 2000; // 40 statements x 50 rows, inside the Fre
 const WITHINGS_AUTH_URL = 'https://account.withings.com/oauth2_user/authorize2';
 const WITHINGS_TOKEN_URL = 'https://wbsapi.withings.net/v2/oauth2';
 const WITHINGS_API_URL = 'https://wbsapi.withings.net';
-const WITHINGS_SCOPE = 'user.metrics,user.activity';
+const WITHINGS_SCOPE = 'user.info,user.metrics,user.activity,user.sleepevents';
 const WITHINGS_STATE_TTL = 600; // seconds an in-flight OAuth state is valid
 
 // ---------- helpers ----------
