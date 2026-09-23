@@ -18,6 +18,16 @@
   ],
   "vars": {
     "DEFAULT_TZ": "America/New_York"
+  },
+  "triggers": {
+    // Matches the Withings access-token lifetime (3h) so the sync never has to do a
+    // cold refresh; also pulls in new weight/activity/sleep data without opening the app.
+    "crons": ["0 */3 * * *"]
   }
-  // Secret (not stored here):  npx wrangler secret put API_TOKEN
+  // Secrets (not stored here):
+  //   npx wrangler secret put API_TOKEN
+  //   npx wrangler secret put WITHINGS_CLIENT_ID
+  //   npx wrangler secret put WITHINGS_CLIENT_SECRET
+  // Optional var if your worker's public URL differs from what Withings redirects to:
+  //   "WITHINGS_REDIRECT_URI": "https://<your-worker-domain>/api/withings/callback"
 }

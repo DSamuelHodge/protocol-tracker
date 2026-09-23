@@ -22,5 +22,19 @@ CREATE INDEX IF NOT EXISTS idx_events_day_kind ON events (day, kind);
 CREATE TABLE IF NOT EXISTS glucose (
   ts INTEGER PRIMARY KEY, mgdl REAL NOT NULL, source TEXT NOT NULL DEFAULT 'import'
 );
-CREATE TABLE IF NOT EXISTS weights (day TEXT PRIMARY KEY, weight REAL NOT NULL, waist REAL);
+CREATE TABLE IF NOT EXISTS weights (day TEXT PRIMARY KEY, weight REAL NOT NULL, waist REAL, body_fat_pct REAL, source TEXT NOT NULL DEFAULT 'manual');
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+-- Withings public API (OAuth2) integration
+CREATE TABLE IF NOT EXISTS withings_tokens (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  access_token TEXT NOT NULL, refresh_token TEXT NOT NULL,
+  expires_at INTEGER NOT NULL, userid TEXT, updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS withings_oauth_state (state TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS withings_sync (id INTEGER PRIMARY KEY CHECK (id = 1), lastupdate INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS vitals (
+  day TEXT NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL,
+  source TEXT NOT NULL DEFAULT 'withings', updated_at INTEGER NOT NULL,
+  PRIMARY KEY (day, metric)
+);

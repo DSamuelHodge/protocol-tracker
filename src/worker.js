@@ -16,6 +16,13 @@ const DEFAULTS = {
 const RANGE_LO = 70, RANGE_HI = 140; // mg/dL band used for "within range"
 const MAX_GLUCOSE_PER_REQUEST = 2000; // 40 statements x 50 rows, inside the Free-plan 50-query limit
 
+// Withings public API — https://developer.withings.com/api-reference
+const WITHINGS_AUTH_URL = 'https://account.withings.com/oauth2_user/authorize2';
+const WITHINGS_TOKEN_URL = 'https://wbsapi.withings.net/v2/oauth2';
+const WITHINGS_API_URL = 'https://wbsapi.withings.net';
+const WITHINGS_SCOPE = 'user.metrics,user.activity';
+const WITHINGS_STATE_TTL = 600; // seconds an in-flight OAuth state is valid
+
 // ---------- helpers ----------
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 const bad = (msg) => new HttpError(400, msg);
@@ -325,6 +332,162 @@ async function postGlucose(env, S, b) {
   return { received: b.readings.length, valid: rows.length, inserted: res.reduce((s, r) => s + (r.meta?.changes || 0), 0) };
 }
 
+// ---------- withings: oauth ----------
+async function withingsTokenRequest(env, params) {
+  const form = new URLSearchParams({ action: 'requesttoken', client_id: env.WITHINGS_CLIENT_ID, client_secret: env.WITHINGS_CLIENT_SECRET, ...params });
+  const res = await fetch(WITHINGS_TOKEN_URL, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: form });
+  const data = await res.json();
+  if (data.status !== 0) throw new HttpError(502, `Withings token error (status ${data.status})`);
+  return data.body; // { access_token, refresh_token, expires_in, userid, ... }
+}
+
+async function saveWithingsTokens(env, body) {
+  const expires_at = Math.floor(Date.now() / 1000) + (body.expires_in || 10800) - 60; // 60s safety margin
+  await env.DB.prepare(
+    `INSERT INTO withings_tokens (id, access_token, refresh_token, expires_at, userid, updated_at) VALUES (1, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token,
+       expires_at = excluded.expires_at, userid = excluded.userid, updated_at = excluded.updated_at`
+  ).bind(body.access_token, body.refresh_token, expires_at, body.userid ? String(body.userid) : null, Math.floor(Date.now() / 1000)).run();
+}
+
+function redirectUriFor(env, url) {
+  return env.WITHINGS_REDIRECT_URI || `${url.origin}/api/withings/callback`;
+}
+
+// GET /api/withings/auth?token=<API_TOKEN>  — no Bearer header possible on a browser redirect,
+// so this route checks the token as a query param instead, and is exempted from the normal
+// authed() gate in fetch() below. Anyone without your API_TOKEN gets a 401 here.
+async function withingsAuthStart(env, url) {
+  if (!env.API_TOKEN || url.searchParams.get('token') !== env.API_TOKEN) return json({ error: 'unauthorized' }, 401);
+  if (!env.WITHINGS_CLIENT_ID) throw new HttpError(500, 'WITHINGS_CLIENT_ID not configured');
+  const state = crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM withings_oauth_state WHERE created_at < ?').bind(now - WITHINGS_STATE_TTL),
+    env.DB.prepare('INSERT INTO withings_oauth_state (state, created_at) VALUES (?, ?)').bind(state, now),
+  ]);
+  const authUrl = new URL(WITHINGS_AUTH_URL);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('client_id', env.WITHINGS_CLIENT_ID);
+  authUrl.searchParams.set('scope', WITHINGS_SCOPE);
+  authUrl.searchParams.set('redirect_uri', redirectUriFor(env, url));
+  authUrl.searchParams.set('state', state);
+  return Response.redirect(authUrl.toString(), 302);
+}
+
+// GET /api/withings/callback?code=...&state=...  — Withings redirects the user's browser
+// here directly; state (not a Bearer token) is what proves this round-trip is legitimate.
+async function withingsCallback(env, url) {
+  const code = url.searchParams.get('code'), state = url.searchParams.get('state');
+  if (!code || !state) return json({ error: 'missing code or state' }, 400);
+  const now = Math.floor(Date.now() / 1000);
+  const row = await env.DB.prepare('SELECT state FROM withings_oauth_state WHERE state = ? AND created_at > ?').bind(state, now - WITHINGS_STATE_TTL).first();
+  if (!row) return json({ error: 'invalid or expired state — restart at /api/withings/auth' }, 400);
+  await env.DB.prepare('DELETE FROM withings_oauth_state WHERE state = ?').bind(state).run();
+  const body = await withingsTokenRequest(env, { grant_type: 'authorization_code', code, redirect_uri: redirectUriFor(env, url) });
+  await saveWithingsTokens(env, body);
+  return new Response('Withings connected. You can close this tab.', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+}
+
+async function getWithingsAccessToken(env) {
+  const row = await env.DB.prepare('SELECT access_token, refresh_token, expires_at FROM withings_tokens WHERE id = 1').first();
+  if (!row) throw new HttpError(409, 'Withings not connected — visit /api/withings/auth?token=<API_TOKEN>');
+  if (row.expires_at > Math.floor(Date.now() / 1000)) return row.access_token;
+  const body = await withingsTokenRequest(env, { grant_type: 'refresh_token', refresh_token: row.refresh_token });
+  await saveWithingsTokens(env, body);
+  return body.access_token;
+}
+
+async function withingsApi(env, path, params) {
+  const token = await getWithingsAccessToken(env);
+  const res = await fetch(`${WITHINGS_API_URL}${path}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params),
+  });
+  const data = await res.json();
+  if (data.status !== 0) throw new HttpError(502, `Withings API error ${data.status} on ${path}`);
+  return data.body;
+}
+
+// ---------- withings: sync ----------
+async function withingsSync(env, S) {
+  const now = Math.floor(Date.now() / 1000);
+  const syncRow = await env.DB.prepare('SELECT lastupdate FROM withings_sync WHERE id = 1').first();
+  const since = syncRow?.lastupdate || now - 30 * 86400; // first run: pull the last 30 days
+  const fromDay = dayOfTs(since, S.tz), toDay = dayOfTs(now, S.tz);
+
+  // 1) Scale: weight (meastype 1) + fat ratio (meastype 6). value = raw * 10^unit.
+  const meas = await withingsApi(env, '/measure', { action: 'getmeas', meastypes: '1,6', category: 1, lastupdate: since });
+  const weightStmts = [];
+  for (const grp of meas.measuregrps || []) {
+    const byType = Object.fromEntries((grp.measures || []).map((x) => [x.type, x.value * 10 ** x.unit]));
+    if (byType[1] == null) continue;
+    const day = dayOfTs(grp.date, S.tz);
+    weightStmts.push(env.DB.prepare(
+      `INSERT INTO weights (day, weight, body_fat_pct, source) VALUES (?, ?, ?, 'withings')
+       ON CONFLICT(day) DO UPDATE SET weight = excluded.weight,
+         body_fat_pct = COALESCE(excluded.body_fat_pct, weights.body_fat_pct), source = 'withings'`
+    ).bind(day, round1(byType[1]), byType[6] != null ? round1(byType[6]) : null));
+  }
+  if (weightStmts.length) await env.DB.batch(weightStmts);
+
+  // 2) ScanWatch daily activity: steps + heart rate summary
+  const activity = await withingsApi(env, '/v2/measure', {
+    action: 'getactivity', startdateymd: fromDay, enddateymd: toDay,
+    data_fields: 'steps,hr_average,hr_min,hr_max',
+  });
+
+  const vitalsStmts = [];
+  const upsertVital = (day, metric, value) => {
+    if (value == null || !day) return;
+    vitalsStmts.push(env.DB.prepare(
+      `INSERT INTO vitals (day, metric, value, source, updated_at) VALUES (?, ?, ?, 'withings', ?)
+       ON CONFLICT(day, metric) DO UPDATE SET value = excluded.value, source = 'withings', updated_at = excluded.updated_at`
+    ).bind(day, metric, value, now));
+  };
+  for (const a of activity.activities || []) {
+    upsertVital(a.date, 'steps', a.steps);
+    upsertVital(a.date, 'hr_avg', a.hr_average);
+    upsertVital(a.date, 'hr_min', a.hr_min);
+    upsertVital(a.date, 'hr_max', a.hr_max);
+  }
+
+  // 3) ScanWatch sleep: per-night score/efficiency/duration.
+  // NOTE: confirm these data_fields names against https://developer.withings.com/openapi.yaml
+  // before relying on them — Withings' field list has drifted across API versions.
+  let sleepNights = 0;
+  try {
+    const sleep = await withingsApi(env, '/v2/sleep', {
+      action: 'getsummary', startdateymd: fromDay, enddateymd: toDay,
+      data_fields: 'sleep_score,sleep_efficiency,total_sleep_time',
+    });
+    for (const s of sleep.series || []) {
+      const day = s.date, d = s.data || {};
+      upsertVital(day, 'sleep_score', d.sleep_score);
+      upsertVital(day, 'sleep_efficiency_pct', d.sleep_efficiency);
+      if (d.total_sleep_time != null) {
+        const hours = round1(d.total_sleep_time / 3600);
+        upsertVital(day, 'sleep_hours', hours);
+        // Feed the scored 'sleep' habit directly — replaces the need for a phone
+        // automation to do this, the way MacroDroid did for the old Health Connect path.
+        vitalsStmts.push(env.DB.prepare(
+          `INSERT INTO habit_log (day, habit, done, value, source, updated_at) VALUES (?, 'sleep', ?, ?, 'withings', ?)
+           ON CONFLICT(day, habit) DO UPDATE SET done = excluded.done, value = excluded.value, source = excluded.source, updated_at = excluded.updated_at`
+        ).bind(day, hours >= S.sleep_hours ? 1 : 0, hours, now));
+      }
+      sleepNights++;
+    }
+  } catch (e) {
+    console.error('withings sleep sync failed (continuing)', e);
+  }
+
+  for (let i = 0; i < vitalsStmts.length; i += 50) await env.DB.batch(vitalsStmts.slice(i, i + 50));
+  await env.DB.prepare('INSERT INTO withings_sync (id, lastupdate) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET lastupdate = excluded.lastupdate').bind(meas.updatetime || now).run();
+
+  return { ok: true, weight_days: weightStmts.length, activity_days: (activity.activities || []).length, sleep_nights: sleepNights };
+}
+
 // ---------- router ----------
 async function route(request, env, url) {
   const p = url.pathname, m = request.method, q = url.searchParams;
@@ -354,6 +517,7 @@ async function route(request, env, url) {
   }
   if (p === '/api/weight' && m === 'POST') return json(await postWeight(env, S, await readBody(request)));
   if (p === '/api/glucose' && m === 'POST') return json(await postGlucose(env, S, await readBody(request)));
+  if (p === '/api/withings/sync' && m === 'POST') return json(await withingsSync(env, S));
   throw new HttpError(404, 'not found');
 }
 
@@ -362,6 +526,11 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
+      // These two can't carry an Authorization header — they're reached by a browser
+      // redirect (yours, then Withings'), not a fetch() call — so they authenticate
+      // themselves differently (see the comments on each function).
+      if (url.pathname === '/api/withings/auth' && request.method === 'GET') return await withingsAuthStart(env, url);
+      if (url.pathname === '/api/withings/callback' && request.method === 'GET') return await withingsCallback(env, url);
       if (!(await authed(request, env))) return json({ error: 'unauthorized' }, 401);
       return await route(request, env, url);
     } catch (e) {
@@ -369,5 +538,12 @@ export default {
       console.error(e);
       return json({ error: 'server error' }, 500);
     }
+  },
+
+  // Cron Trigger (see wrangler.jsonc) — keeps weight/activity/sleep pulled in even if
+  // nobody opens the app, and keeps the access token refreshed before it expires.
+  async scheduled(event, env, ctx) {
+    const S = await getSettings(env);
+    ctx.waitUntil(withingsSync(env, S).catch((e) => console.error('withings cron sync failed', e)));
   },
 };
