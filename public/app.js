@@ -81,7 +81,7 @@ function render() {
   $('#todayBtn').hidden = isToday;
   $('#scoreText').textContent = `${d.score.done} of ${d.score.total}`;
   $('#scoreMeter').value = d.score.total ? d.score.done / d.score.total : 0;
-  renderHabits(); renderQuick(); renderMeals(); renderGlucose();
+  renderHabits(); renderQuick(); renderMeals(); renderGlucose(); renderWithings();
   const w = d.weight, f = $('#weightForm');
   f.weight.value = w?.weight ?? ''; f.waist.value = w?.waist ?? '';
 }
@@ -177,6 +177,24 @@ function renderGlucose() {
     <p class="hint">${lastNote} All values are mg/dL. Meal analysis uses the time you entered for each meal: Before is the 15 minutes leading up to it, Peak is the highest reading in the 2 hours after.</p>`;
 }
 
+// withings ------------------------------------------------------------------
+function renderWithings() {
+  const box = $('#withingsBody'), v = state.data.vitals || {}, w = state.data.weight;
+  const items = [];
+  if (w?.body_fat_pct != null) items.push(`<span>Body fat <b>${w.body_fat_pct}%</b>${w.source === 'withings' ? ' (scale)' : ''}</span>`);
+  if (v.steps != null) items.push(`<span>Steps <b>${Number(v.steps).toLocaleString()}</b></span>`);
+  if (v.hr_avg != null) items.push(`<span>Heart rate avg <b>${v.hr_avg}</b> bpm</span>`);
+  if (v.hr_min != null && v.hr_max != null) items.push(`<span>Heart rate range <b>${v.hr_min}&ndash;${v.hr_max}</b> bpm</span>`);
+  if (v.sleep_hours != null) items.push(`<span>Sleep <b>${v.sleep_hours} h</b>${v.sleep_score != null ? `, score ${v.sleep_score}` : ''}</span>`);
+  else if (v.sleep_score != null) items.push(`<span>Sleep score <b>${v.sleep_score}</b></span>`);
+  if (v.sleep_efficiency_pct != null) items.push(`<span>Sleep efficiency <b>${v.sleep_efficiency_pct}%</b></span>`);
+  if (!items.length) {
+    box.innerHTML = '<p class="hint">No scale, activity, or sleep data for this day yet. Connect Withings in Settings, or log a weigh-in below.</p>';
+    return;
+  }
+  box.innerHTML = `<p class="stats">${items.join('')}</p>`;
+}
+
 // trend ---------------------------------------------------------------------
 function spark(values, avg) {
   const pts = values.map((v, i) => [i, v]).filter((p) => p[1] != null);
@@ -211,11 +229,19 @@ function renderTrend() {
   const fast = days.map((d) => d.glucose_fasting_avg);
   const fLast = [...fast].reverse().find((v) => v != null);
   const fSpark = spark(fast);
+  const steps = days.map((d) => d.steps);
+  const stLast = [...steps].reverse().find((v) => v != null);
+  const stSpark = spark(steps);
+  const sleep = days.map((d) => d.sleep_hours);
+  const slLast = [...sleep].reverse().find((v) => v != null);
+  const slSpark = spark(sleep);
 
   $('#trendBody').innerHTML = `<div class="trend">
     <div class="mini"><h3>Habits completed <small>${pct}% over 14 days</small></h3><div class="bars">${bars}</div></div>
     <div class="mini"><h3>Weight <small>${wLast != null ? `${wLast} latest, dashed = 7-day average` : ''}</small></h3>${wSpark || '<p class="hint">Log two or more weigh-ins to see a trend. Judge the dashed average, not single days.</p>'}</div>
     <div class="mini"><h3>Fasting glucose <small>${fLast != null ? `${fLast} mg/dL latest` : ''}</small></h3>${fSpark || '<p class="hint">Needs glucose readings on two or more days.</p>'}</div>
+    <div class="mini"><h3>Steps <small>${stLast != null ? `${Number(stLast).toLocaleString()} latest` : ''}</small></h3>${stSpark || '<p class="hint">Needs synced activity on two or more days.</p>'}</div>
+    <div class="mini"><h3>Sleep <small>${slLast != null ? `${slLast} h latest` : ''}</small></h3>${slSpark || '<p class="hint">Needs synced sleep on two or more nights.</p>'}</div>
   </div>`;
 }
 
