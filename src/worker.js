@@ -473,12 +473,17 @@ async function withingsSync(env, S) {
   try {
     const sleep = await withingsApi(env, '/v2/sleep', {
       action: 'getsummary', startdateymd: fromDay, enddateymd: toDay,
-      data_fields: 'sleep_score,sleep_efficiency,total_sleep_time',
+      data_fields: 'sleep_score,sleep_efficiency,total_sleep_time,deepsleepduration,lightsleepduration,remsleepduration,wakeupduration',
     });
     for (const s of sleep.series || []) {
       const day = s.date, d = s.data || {};
       upsertVital(day, 'sleep_score', d.sleep_score);
       upsertVital(day, 'sleep_efficiency_pct', d.sleep_efficiency);
+      // Stage durations arrive in seconds; store as minutes for compact, readable stacked-bar charts.
+      if (d.deepsleepduration != null) upsertVital(day, 'sleep_deep_min', Math.round(d.deepsleepduration / 60));
+      if (d.lightsleepduration != null) upsertVital(day, 'sleep_light_min', Math.round(d.lightsleepduration / 60));
+      if (d.remsleepduration != null) upsertVital(day, 'sleep_rem_min', Math.round(d.remsleepduration / 60));
+      if (d.wakeupduration != null) upsertVital(day, 'sleep_awake_min', Math.round(d.wakeupduration / 60));
       if (d.total_sleep_time != null) {
         const hours = round1(d.total_sleep_time / 3600);
         upsertVital(day, 'sleep_hours', hours);
@@ -499,6 +504,17 @@ async function withingsSync(env, S) {
   await env.DB.prepare('INSERT INTO withings_sync (id, lastupdate) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET lastupdate = excluded.lastupdate').bind(meas.updatetime || now).run();
 
   return { ok: true, weight_days: weightStmts.length, activity_days: (activity.activities || []).length, sleep_nights: sleepNights };
+}
+
+// GET /api/withings/status — cheap poll for the UI's sync pill. Never calls Withings itself,
+// so it's safe to hit on every page load without burning API rate limit or refreshing tokens.
+async function withingsStatus(env) {
+  const [tok, sync] = await env.DB.batch([
+    env.DB.prepare('SELECT userid, updated_at FROM withings_tokens WHERE id = 1'),
+    env.DB.prepare('SELECT lastupdate FROM withings_sync WHERE id = 1'),
+  ]);
+  const connected = !!tok.results[0];
+  return { connected, userid: tok.results[0]?.userid ?? null, last_sync: sync.results[0]?.lastupdate ?? null };
 }
 
 // ---------- router ----------
@@ -531,6 +547,7 @@ async function route(request, env, url) {
   if (p === '/api/weight' && m === 'POST') return json(await postWeight(env, S, await readBody(request)));
   if (p === '/api/glucose' && m === 'POST') return json(await postGlucose(env, S, await readBody(request)));
   if (p === '/api/withings/sync' && m === 'POST') return json(await withingsSync(env, S));
+  if (p === '/api/withings/status' && m === 'GET') return json(await withingsStatus(env));
   throw new HttpError(404, 'not found');
 }
 

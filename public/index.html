@@ -15,13 +15,12 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="masthead">
-    <img src="/brand/mark-ink.png" alt="" width="23" height="44">
-    <p>Protocol tracker</p>
-  </div>
-
   <header class="top">
     <div class="top-inner">
+      <div class="masthead">
+        <img src="/brand/mark-ink.png" alt="" width="16" height="31">
+        <p>Protocol tracker</p>
+      </div>
       <div class="datebar">
         <button id="prev" class="icon" aria-label="Previous day">&lsaquo;</button>
         <div class="daytitle">
@@ -35,10 +34,20 @@
         <p id="scoreText" class="score">&nbsp;</p>
         <progress id="scoreMeter" max="1" value="0" aria-label="Habits completed"></progress>
       </div>
+      <div class="syncbar" id="syncBar" data-state="checking">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="syncText">Checking Withings&hellip;</span>
+        <button type="button" id="syncNow" class="link" hidden>Sync now</button>
+      </div>
     </div>
   </header>
 
   <main>
+    <section aria-labelledby="h-overview" class="overview-section">
+      <h2 id="h-overview" class="sr-only">Overview</h2>
+      <div id="overview" class="overview"></div>
+    </section>
+
     <section aria-labelledby="h-habits">
       <h2 id="h-habits">Habits</h2>
       <p class="lede">Most score themselves from your meals and quick actions. Tap one to override it; a label on the right shows what set it.</p>
@@ -71,13 +80,15 @@
     </section>
 
     <section aria-labelledby="h-withings">
-      <h2 id="h-withings">Withings</h2>
+      <h2 id="h-withings">Vitals</h2>
+      <p class="lede">Scale, activity and sleep, read from your Withings devices.</p>
       <div id="withingsBody"></div>
     </section>
 
     <section aria-labelledby="h-trend">
-      <h2 id="h-trend">Last 14 days</h2>
+      <h2 id="h-trend">Trends</h2>
       <p class="lede">Judge the trend, not a single day.</p>
+      <div class="tabs" id="trendTabs" role="tablist" aria-label="Trend metric"></div>
       <div id="trendBody"></div>
       <form id="weightForm" class="weight">
         <h3>Weigh-in for this day</h3>
