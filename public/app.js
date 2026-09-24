@@ -81,7 +81,7 @@ function render() {
   $('#todayBtn').hidden = isToday;
   $('#scoreText').textContent = `${d.score.done} of ${d.score.total}`;
   $('#scoreMeter').value = d.score.total ? d.score.done / d.score.total : 0;
-  renderHabits(); renderQuick(); renderMeals(); renderGlucose(); renderWithings();
+  renderHabits(); renderQuick(); renderMeals(); renderGlucose(); renderWithings(); renderOverview();
   const w = d.weight, f = $('#weightForm');
   f.weight.value = w?.weight ?? ''; f.waist.value = w?.waist ?? '';
 }
@@ -180,37 +180,168 @@ function renderGlucose() {
 // withings ------------------------------------------------------------------
 function renderWithings() {
   const box = $('#withingsBody'), v = state.data.vitals || {}, w = state.data.weight;
-  const items = [];
-  if (w?.body_fat_pct != null) items.push(`<span>Body fat <b>${w.body_fat_pct}%</b>${w.source === 'withings' ? ' (scale)' : ''}</span>`);
-  if (v.steps != null) items.push(`<span>Steps <b>${Number(v.steps).toLocaleString()}</b></span>`);
-  if (v.hr_avg != null) items.push(`<span>Heart rate avg <b>${v.hr_avg}</b> bpm</span>`);
-  if (v.hr_min != null && v.hr_max != null) items.push(`<span>Heart rate range <b>${v.hr_min}&ndash;${v.hr_max}</b> bpm</span>`);
-  if (v.sleep_hours != null) items.push(`<span>Sleep <b>${v.sleep_hours} h</b>${v.sleep_score != null ? `, score ${v.sleep_score}` : ''}</span>`);
-  else if (v.sleep_score != null) items.push(`<span>Sleep score <b>${v.sleep_score}</b></span>`);
-  if (v.sleep_efficiency_pct != null) items.push(`<span>Sleep efficiency <b>${v.sleep_efficiency_pct}%</b></span>`);
-  if (!items.length) {
+  const tiles = [];
+  if (w?.weight != null) tiles.push(tile('Weight', `${w.weight}<small> lb</small>`, w.source === 'withings' ? 'scale' : 'manual'));
+  if (w?.body_fat_pct != null) tiles.push(tile('Body fat', `${w.body_fat_pct}<small> %</small>`));
+  if (v.steps != null) tiles.push(tile('Steps', Number(v.steps).toLocaleString()));
+  if (v.hr_avg != null) tiles.push(tile('Heart rate avg', `${v.hr_avg}<small> bpm</small>`));
+  if (v.hr_min != null && v.hr_max != null) tiles.push(tile('HR range', `${v.hr_min}&ndash;${v.hr_max}<small> bpm</small>`));
+  if (v.sleep_hours != null) tiles.push(tile('Sleep', `${v.sleep_hours}<small> h</small>`, v.sleep_score != null ? `score ${v.sleep_score}` : null));
+  else if (v.sleep_score != null) tiles.push(tile('Sleep score', v.sleep_score));
+  if (v.sleep_efficiency_pct != null) tiles.push(tile('Sleep efficiency', `${v.sleep_efficiency_pct}<small> %</small>`));
+
+  if (!tiles.length) {
     box.innerHTML = '<p class="hint">No scale, activity, or sleep data for this day yet. Connect Withings in Settings, or log a weigh-in below.</p>';
     return;
   }
-  box.innerHTML = `<p class="stats">${items.join('')}</p>`;
+  box.innerHTML = `<div class="tiles">${tiles.join('')}</div>${renderStages(v)}`;
+}
+function tile(label, value, sub) {
+  return `<div class="tile"><div class="label">${esc(label)}</div><div class="value">${value}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>`;
+}
+function renderStages(v) {
+  const segs = [['deep', v.sleep_deep_min], ['light', v.sleep_light_min], ['rem', v.sleep_rem_min], ['awake', v.sleep_awake_min]];
+  const total = segs.reduce((s, [, m]) => s + (m || 0), 0);
+  if (!total) return '';
+  const label = (k) => ({ deep: 'Deep', light: 'Light', rem: 'REM', awake: 'Awake' }[k]);
+  return `<div class="stages">
+    <div class="bar-track">${segs.map(([k, m]) => m ? `<span class="seg-${k}" style="width:${(100 * m / total).toFixed(1)}%"></span>` : '').join('')}</div>
+    <div class="legend">${segs.filter(([, m]) => m).map(([k, m]) => `<span><i class="seg-${k}"></i>${label(k)} <b>${Math.floor(m / 60)}h ${m % 60}m</b></span>`).join('')}</div>
+  </div>`;
+}
+
+// overview: Apple-Health-style ring strip at the top of the dashboard --------
+function ringSvg(pct, centerText, size = 52, stroke = 5) {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, pct || 0));
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
+    <circle class="track" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}"/>
+    <circle class="fill" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - p)).toFixed(1)}"/>
+    <text x="${size / 2}" y="${size / 2}">${esc(centerText)}</text>
+  </svg>`;
+}
+function deltaHtml(diff, fmt, higherIsGood) {
+  if (diff == null || Number.isNaN(diff)) return '';
+  const flat = Math.abs(diff) < 0.05;
+  const cls = flat ? 'flat' : (diff > 0) === higherIsGood ? 'good' : 'bad';
+  const arrow = flat ? '&ndash;' : diff > 0 ? '&#9650;' : '&#9660;';
+  return `<div class="delta ${cls}">${arrow} ${fmt(Math.abs(diff))} vs 7-day avg</div>`;
+}
+function renderOverview() {
+  const d = state.data, r = state.range, box = $('#overview');
+  if (!box || !d) return;
+  const cards = [];
+  cards.push(`<div class="stat-card">${ringSvg(d.score.total ? d.score.done / d.score.total : 0, `${d.score.done}/${d.score.total}`)}
+    <div class="body"><div class="label">Habits today</div><div class="value">${d.score.total ? Math.round((100 * d.score.done) / d.score.total) : 0}<small>%</small></div></div></div>`);
+
+  const sGoal = d.settings.sleep_hours, sH = d.vitals?.sleep_hours;
+  if (sH != null) cards.push(`<div class="stat-card">${ringSvg(sGoal ? sH / sGoal : 0, `${sH}h`)}
+    <div class="body"><div class="label">Sleep</div><div class="value">${sH}<small> h</small></div><div class="sub" style="font-size:12px;color:var(--text-2)">goal ${sGoal} h</div></div></div>`);
+
+  if (r) {
+    const days = r.days;
+    const w = days.map((x) => x.weight), wTodayRaw = w[w.length - 1] ?? d.weight?.weight ?? null;
+    const wToday = wTodayRaw == null ? null : Math.round(wTodayRaw * 10) / 10;
+    const wPrev = w.slice(0, -1).filter((v) => v != null);
+    const wAvg7 = wPrev.length ? wPrev.slice(-7).reduce((a, b) => a + b, 0) / Math.min(7, wPrev.length) : null;
+    if (wToday != null) cards.push(`<div class="stat-card"><div class="body"><div class="label">Weight</div>
+      <div class="value">${wToday}<small> lb</small></div>${wAvg7 != null ? deltaHtml(wToday - wAvg7, (v) => v.toFixed(1) + ' lb', false) : ''}</div></div>`);
+
+    const st = days.map((x) => x.steps), stToday = st[st.length - 1];
+    const stPrev = st.slice(0, -1).filter((v) => v != null);
+    const stAvg7 = stPrev.length ? stPrev.slice(-7).reduce((a, b) => a + b, 0) / Math.min(7, stPrev.length) : null;
+    if (stToday != null) cards.push(`<div class="stat-card"><div class="body"><div class="label">Steps</div>
+      <div class="value">${Number(stToday).toLocaleString()}</div>${stAvg7 != null ? deltaHtml(stToday - stAvg7, (v) => Math.round(v).toLocaleString(), true) : ''}</div></div>`);
+  }
+  box.innerHTML = cards.join('');
+}
+
+// sync status -----------------------------------------------------------------
+let syncing = false;
+function renderSyncBar(status, opts = {}) {
+  const bar = $('#syncBar'), text = $('#syncText'), btn = $('#syncNow');
+  if (!bar) return;
+  btn.hidden = false;
+  if (opts.checking) { bar.dataset.state = 'checking'; text.textContent = 'Checking Withings\u2026'; btn.hidden = true; return; }
+  if (opts.error) { bar.dataset.state = 'error'; text.textContent = opts.error; btn.disabled = false; btn.textContent = 'Try again'; return; }
+  if (!status.connected) { bar.dataset.state = 'off'; text.textContent = 'Withings not connected'; btn.hidden = true; return; }
+  if (syncing) { bar.dataset.state = 'syncing'; text.textContent = 'Syncing\u2026'; btn.disabled = true; btn.textContent = 'Syncing\u2026'; return; }
+  const staleMs = status.last_sync ? (Date.now() / 1000 - status.last_sync) : Infinity;
+  bar.dataset.state = staleMs > 36 * 3600 ? 'stale' : 'ok';
+  text.textContent = status.last_sync ? `Withings \u2022 synced ${ago(status.last_sync)}` : 'Withings connected \u2022 never synced';
+  btn.disabled = false; btn.textContent = 'Sync now';
+}
+async function loadSyncStatus() {
+  if (!token) return;
+  renderSyncBar(null, { checking: true });
+  try { const s = await getJson('/api/withings/status'); renderSyncBar(s); return s; }
+  catch (e) { if (e.message !== 'Not authorized') renderSyncBar(null, { error: 'Couldn\u2019t check sync status' }); }
+}
+async function doSync() {
+  if (syncing) return;
+  syncing = true; renderSyncBar(null, {});
+  const bar = $('#syncBar'); if (bar) bar.dataset.state = 'syncing';
+  const btn = $('#syncNow'); if (btn) { btn.disabled = true; btn.textContent = 'Syncing\u2026'; }
+  try {
+    const r = await (await send('POST', '/api/withings/sync')).json();
+    toast(`Synced: ${r.weight_days} weigh-in${r.weight_days === 1 ? '' : 's'}, ${r.activity_days} activity day${r.activity_days === 1 ? '' : 's'}, ${r.sleep_nights} night${r.sleep_nights === 1 ? '' : 's'} of sleep`);
+    await refresh();
+  } catch (e) { if (e.message !== 'Not authorized') toast(e.message); }
+  finally { syncing = false; await loadSyncStatus(); }
 }
 
 // trend ---------------------------------------------------------------------
-function spark(values, avg) {
+const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10);
+function spark(values, avg, days, unit) {
+  values = values.map(r1);
   const pts = values.map((v, i) => [i, v]).filter((p) => p[1] != null);
   if (pts.length < 2) return null;
   const all = pts.map((p) => p[1]).concat((avg || []).filter((v) => v != null));
   let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1) { lo -= 0.5; hi += 0.5; }
-  const W = 300, H = 60, P = 6, n = values.length - 1;
+  const W = 300, H = 130, P = 10, n = values.length - 1;
   const X = (i) => P + (i / n) * (W - 2 * P), Y = (v) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
   const line = (arr) => arr.map(([i, v], k) => (k ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
   const avgPts = (avg || []).map((v, i) => [i, v]).filter((p) => p[1] != null);
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+  const points = values.map((v, i) => [Number(X(i).toFixed(1)), v == null ? null : Number(Y(v).toFixed(1)), v, days ? dayShort(days[i]) : '']);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-points='${esc(JSON.stringify(points))}' data-unit="${esc(unit || '')}">
     ${avgPts.length > 1 ? `<path class="avg" d="${line(avgPts)}"/>` : ''}
     <path class="line" d="${line(pts)}"/>
-    ${pts.map(([i, v]) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.5"/>`).join('')}</svg>`;
+    ${pts.map(([i, v]) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.5"/>`).join('')}
+    <line class="hoverline" x1="0" y1="${P}" x2="0" y2="${H - P}" opacity="0"/>
+    <circle class="hoverdot" r="4" opacity="0"/>
+    <rect class="tooltip-bg" y="4" height="16" rx="4" opacity="0"/>
+    <text class="tooltip-text" y="15" text-anchor="middle" opacity="0"></text>
+  </svg>`;
 }
+function attachTooltip(svg) {
+  let pts; try { pts = JSON.parse(svg.dataset.points || '[]'); } catch { return; }
+  const unit = svg.dataset.unit || '';
+  const [hoverline, hoverdot, tipBg, tipText] = ['.hoverline', '.hoverdot', '.tooltip-bg', '.tooltip-text'].map((s) => svg.querySelector(s));
+  const vb = () => svg.viewBox.baseVal;
+  function move(clientX) {
+    const rect = svg.getBoundingClientRect(), b = vb();
+    const relX = ((clientX - rect.left) / rect.width) * b.width;
+    let nearest = null, nd = Infinity;
+    for (const p of pts) { if (p[1] == null) continue; const d = Math.abs(p[0] - relX); if (d < nd) { nd = d; nearest = p; } }
+    if (!nearest) return hide();
+    const [x, y, v, label] = nearest;
+    hoverline.setAttribute('x1', x); hoverline.setAttribute('x2', x); hoverline.setAttribute('opacity', 1);
+    hoverdot.setAttribute('cx', x); hoverdot.setAttribute('cy', y); hoverdot.setAttribute('opacity', 1);
+    const txt = `${label ? label + ': ' : ''}${v}${unit}`;
+    tipText.textContent = txt;
+    const tw = Math.max(34, txt.length * 5.6 + 12);
+    const tx = Math.max(2, Math.min(x - tw / 2, b.width - tw - 2));
+    tipBg.setAttribute('x', tx); tipBg.setAttribute('width', tw); tipBg.setAttribute('opacity', 0.94);
+    tipText.setAttribute('x', tx + tw / 2); tipText.setAttribute('opacity', 1);
+  }
+  function hide() { [hoverline, hoverdot, tipBg, tipText].forEach((el) => el.setAttribute('opacity', 0)); }
+  svg.addEventListener('pointermove', (e) => move(e.clientX));
+  svg.addEventListener('pointerdown', (e) => move(e.clientX));
+  svg.addEventListener('pointerleave', hide);
+}
+
+const TREND_TAB_LABELS = { habits: 'Habits', weight: 'Weight', glucose: 'Glucose', steps: 'Steps', sleep: 'Sleep', stages: 'Sleep stages' };
+let trendTab = 'habits';
 
 function renderTrend() {
   const days = state.range.days;
@@ -222,28 +353,43 @@ function renderTrend() {
     return `<button class="bar" data-day="${d.day}" ${d.day === state.day ? 'aria-current="date"' : ''} aria-label="${esc(dayShort(d.day))}: ${d.score.done} of ${d.score.total}"><span style="--h:${h}%"></span><em>${wd}</em></button>`;
   }).join('');
 
+  const dayList = days.map((d) => d.day);
   const weights = days.map((d) => d.weight);
   const wAvg = weights.map((_, i) => { const w = weights.slice(Math.max(0, i - 6), i + 1).filter((v) => v != null); return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null; });
-  const wLast = [...weights].reverse().find((v) => v != null);
-  const wSpark = spark(weights, wAvg);
+  const wLast = r1([...weights].reverse().find((v) => v != null));
+  const wSpark = spark(weights, wAvg, dayList, ' lb');
   const fast = days.map((d) => d.glucose_fasting_avg);
-  const fLast = [...fast].reverse().find((v) => v != null);
-  const fSpark = spark(fast);
+  const fLast = r1([...fast].reverse().find((v) => v != null));
+  const fSpark = spark(fast, null, dayList, ' mg/dL');
   const steps = days.map((d) => d.steps);
   const stLast = [...steps].reverse().find((v) => v != null);
-  const stSpark = spark(steps);
+  const stSpark = spark(steps, null, dayList, ' steps');
   const sleep = days.map((d) => d.sleep_hours);
-  const slLast = [...sleep].reverse().find((v) => v != null);
-  const slSpark = spark(sleep);
+  const slLast = r1([...sleep].reverse().find((v) => v != null));
+  const slSpark = spark(sleep, null, dayList, ' h');
+  const stagesRows = days.map((d) => d.vitals || {});
+  const hasStages = stagesRows.some((v) => v.sleep_deep_min || v.sleep_light_min || v.sleep_rem_min);
 
-  $('#trendBody').innerHTML = `<div class="trend">
-    <div class="mini"><h3>Habits completed <small>${pct}% over 14 days</small></h3><div class="bars">${bars}</div></div>
-    <div class="mini"><h3>Weight <small>${wLast != null ? `${wLast} latest, dashed = 7-day average` : ''}</small></h3>${wSpark || '<p class="hint">Log two or more weigh-ins to see a trend. Judge the dashed average, not single days.</p>'}</div>
-    <div class="mini"><h3>Fasting glucose <small>${fLast != null ? `${fLast} mg/dL latest` : ''}</small></h3>${fSpark || '<p class="hint">Needs glucose readings on two or more days.</p>'}</div>
-    <div class="mini"><h3>Steps <small>${stLast != null ? `${Number(stLast).toLocaleString()} latest` : ''}</small></h3>${stSpark || '<p class="hint">Needs synced activity on two or more days.</p>'}</div>
-    <div class="mini"><h3>Sleep <small>${slLast != null ? `${slLast} h latest` : ''}</small></h3>${slSpark || '<p class="hint">Needs synced sleep on two or more nights.</p>'}</div>
-  </div>`;
+  const minis = {
+    habits: `<div class="mini"><h3>Habits completed <small>${pct}% over 14 days</small></h3><div class="bars">${bars}</div></div>`,
+    weight: `<div class="mini"><h3>Weight <small>${wLast != null ? `${wLast} latest, dashed = 7-day average` : ''}</small></h3>${wSpark || '<p class="hint">Log two or more weigh-ins to see a trend. Judge the dashed average, not single days.</p>'}</div>`,
+    glucose: `<div class="mini"><h3>Fasting glucose <small>${fLast != null ? `${fLast} mg/dL latest` : ''}</small></h3>${fSpark || '<p class="hint">Needs glucose readings on two or more days.</p>'}</div>`,
+    steps: `<div class="mini"><h3>Steps <small>${stLast != null ? `${Number(stLast).toLocaleString()} latest` : ''}</small></h3>${stSpark || '<p class="hint">Needs synced activity on two or more days.</p>'}</div>`,
+    sleep: `<div class="mini"><h3>Sleep <small>${slLast != null ? `${slLast} h latest` : ''}</small></h3>${slSpark || '<p class="hint">Needs synced sleep on two or more nights.</p>'}</div>`,
+    stages: hasStages ? `<div class="mini"><h3>Sleep stages <small>last 14 nights</small></h3><div class="trend">${days.map((d) => {
+      const v = d.vitals || {}; return `<div><p class="hint" style="margin:0 0 4px">${esc(dayShort(d.day))}</p>${renderStages(v) || '<p class="hint" style="margin:0">No sleep synced</p>'}</div>`;
+    }).join('')}</div></div>` : '',
+  };
+
+  const tabsAvail = TREND_TAB_ORDER().filter((k) => minis[k]);
+  if (!tabsAvail.includes(trendTab)) trendTab = tabsAvail[0] || 'habits';
+  $('#trendTabs').innerHTML = tabsAvail.map((k) =>
+    `<button type="button" role="tab" aria-selected="${k === trendTab}" data-tab="${k}">${TREND_TAB_LABELS[k]}</button>`).join('');
+  $('#trendBody').innerHTML = minis[trendTab] || '';
+  $('#trendBody').querySelectorAll('svg[data-points]').forEach(attachTooltip);
+  renderOverview();
 }
+function TREND_TAB_ORDER() { return ['habits', 'weight', 'glucose', 'steps', 'sleep', 'stages']; }
 
 // ---------- events ----------
 document.addEventListener('click', (ev) => {
@@ -253,6 +399,8 @@ document.addEventListener('click', (ev) => {
   if (t.id === 'todayBtn') return load(todayStr());
   if (t.id === 'openSettings') return openSettings('');
   if (t.id === 'closeSettings') return $('#settingsDlg').close();
+  if (t.id === 'syncNow') return doSync();
+  if (t.dataset.tab) { trendTab = t.dataset.tab; return renderTrend(); }
   if (t.dataset.day) return load(t.dataset.day);
   if (t.dataset.habit) {
     return act(() => send('PUT', '/api/habit', { day: state.day, habit: t.dataset.habit, done: t.dataset.done !== 'true', source: 'manual' }));
@@ -273,7 +421,7 @@ $('#weightForm').addEventListener('submit', (ev) => {
   const f = ev.target;
   act(() => send('POST', '/api/weight', { day: state.day, weight: +f.weight.value, waist: f.waist.value === '' ? null : +f.waist.value }), 'Weigh-in saved');
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && token && state.day) refresh().catch(() => {}); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && token && state.day) { refresh().catch(() => {}); loadSyncStatus(); } });
 
 // ---------- settings ----------
 async function openSettings(msg) {
@@ -296,7 +444,7 @@ async function openSettings(msg) {
 $('#saveToken').addEventListener('click', async () => {
   token = $('#tokenInput').value.trim();
   try { localStorage.setItem('pt_token', token); } catch { /* session only */ }
-  try { await load(state.day); $('#settingsMsg').textContent = 'Token accepted.'; await openSettings('Token accepted.'); }
+  try { await load(state.day); loadSyncStatus(); $('#settingsMsg').textContent = 'Token accepted.'; await openSettings('Token accepted.'); }
   catch (e) { $('#settingsMsg').textContent = e.message === 'Not authorized' ? 'That token was rejected.' : e.message; }
 });
 
@@ -373,5 +521,5 @@ $('#exportBtn').addEventListener('click', async () => {
 });
 
 // ---------- boot ----------
-if (token) load().catch((e) => { if (e.message !== 'Not authorized') toast(e.message); });
+if (token) { load().catch((e) => { if (e.message !== 'Not authorized') toast(e.message); }); loadSyncStatus(); }
 else openSettings('Enter the access token you set on the Worker to begin.');

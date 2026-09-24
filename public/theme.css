@@ -64,5 +64,22 @@
   --plaster-glass: rgba(247, 245, 240, 0.94);   /* derived: sticky bar */
   --sage-wash: rgba(138, 154, 134, 0.22);       /* derived: chart band */
 
+  /* derived: status + dashboard accents, kept inside the guide's five-color family */
+  --clay:       #B15C4A;                        /* derived from wood-deep, shifted toward red for alerts */
+  --clay-wash:  rgba(177, 92, 74, 0.14);
+  --ok:         var(--sage);
+  --ok-wash:    rgba(138, 154, 134, 0.16);
+  --warn:       var(--wood-deep);
+  --warn-wash:  rgba(169, 135, 95, 0.16);
+
+  /* derived: sleep-stage + multi-series chart palette, reusing the same five colors */
+  --stage-deep:  var(--ink);
+  --stage-light: var(--sage);
+  --stage-rem:   var(--wood-deep);
+  --stage-awake: var(--stone);
+
+  --ring-track: var(--stone);
+  --ring-fill:  var(--ink);
+
   color-scheme: light;   /* the guide defines a light system only */
 }
