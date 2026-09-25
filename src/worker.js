@@ -14,6 +14,8 @@ const DEFAULTS = {
   active_habits: HABITS,
 };
 const RANGE_LO = 70, RANGE_HI = 140; // mg/dL band used for "within range"
+const KG_TO_LB = 2.20462;
+const kgToLb = (kg) => round1(kg * KG_TO_LB); // Withings reports SI units (kg); the tracker records lb like manual entries
 const MAX_GLUCOSE_PER_REQUEST = 2000; // 40 statements x 50 rows, inside the Free-plan 50-query limit
 
 // Withings public API — https://developer.withings.com/api-reference
@@ -444,7 +446,7 @@ async function withingsSync(env, S) {
       `INSERT INTO weights (day, weight, body_fat_pct, source) VALUES (?, ?, ?, 'withings')
        ON CONFLICT(day) DO UPDATE SET weight = excluded.weight,
          body_fat_pct = COALESCE(excluded.body_fat_pct, weights.body_fat_pct), source = 'withings'`
-    ).bind(day, round1(byType[1]), byType[6] != null ? round1(byType[6]) : null));
+    ).bind(day, kgToLb(byType[1]), byType[6] != null ? round1(byType[6]) : null));
   }
   if (weightStmts.length) await env.DB.batch(weightStmts);
 
