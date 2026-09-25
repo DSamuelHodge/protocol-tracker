@@ -14,6 +14,8 @@ const DEFAULTS = {
   active_habits: HABITS,
 };
 const RANGE_LO = 70, RANGE_HI = 140; // mg/dL band used for "within range"
+const KG_TO_LB = 2.20462;
+const kgToLb = (kg) => round1(kg * KG_TO_LB); // Withings reports SI units (kg); the tracker records lb like manual entries
 const MAX_GLUCOSE_PER_REQUEST = 2000; // 40 statements x 50 rows, inside the Free-plan 50-query limit
 
 // Withings public API — https://developer.withings.com/api-reference
@@ -427,8 +429,11 @@ async function withingsApi(env, path, params) {
 async function withingsSync(env, S) {
   const now = Math.floor(Date.now() / 1000);
   const syncRow = await env.DB.prepare('SELECT lastupdate FROM withings_sync WHERE id = 1').first();
-  const since = syncRow?.lastupdate || now - 30 * 86400; // first run: pull the last 30 days
-  const fromDay = dayOfTs(since, S.tz), toDay = dayOfTs(now, S.tz);
+  const since = syncRow?.lastupdate || now - 30 * 86400; // scale cursor: server time of the last weigh-in batch we processed
+  const toDay = dayOfTs(now, S.tz);
+  // Activity/sleep use a rolling 14-day window, independent of the scale cursor: upserts are
+  // idempotent, and this keeps backfilling recent nights even when nobody has weighed in for weeks.
+  const fromDay = addDays(toDay, -13);
 
   // 1) Scale: weight (meastype 1) + fat ratio (meastype 6). value = raw * 10^unit.
   const meas = await withingsApi(env, '/measure', { action: 'getmeas', meastypes: '1,6', category: 1, lastupdate: since });
@@ -441,7 +446,7 @@ async function withingsSync(env, S) {
       `INSERT INTO weights (day, weight, body_fat_pct, source) VALUES (?, ?, ?, 'withings')
        ON CONFLICT(day) DO UPDATE SET weight = excluded.weight,
          body_fat_pct = COALESCE(excluded.body_fat_pct, weights.body_fat_pct), source = 'withings'`
-    ).bind(day, round1(byType[1]), byType[6] != null ? round1(byType[6]) : null));
+    ).bind(day, kgToLb(byType[1]), byType[6] != null ? round1(byType[6]) : null));
   }
   if (weightStmts.length) await env.DB.batch(weightStmts);
 
@@ -501,7 +506,9 @@ async function withingsSync(env, S) {
   }
 
   for (let i = 0; i < vitalsStmts.length; i += 50) await env.DB.batch(vitalsStmts.slice(i, i + 50));
-  await env.DB.prepare('INSERT INTO withings_sync (id, lastupdate) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET lastupdate = excluded.lastupdate').bind(meas.updatetime || now).run();
+  // Stamp the cursor with this run's time (not meas.updatetime, which only moves when someone
+  // weighs in). The status pill reads this, so it now reflects the last successful sync.
+  await env.DB.prepare('INSERT INTO withings_sync (id, lastupdate) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET lastupdate = excluded.lastupdate').bind(now).run();
 
   return { ok: true, weight_days: weightStmts.length, activity_days: (activity.activities || []).length, sleep_nights: sleepNights };
 }
