@@ -6,8 +6,9 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    // Only /api/* runs the Worker; everything else is served straight from static assets.
-    "run_worker_first": ["/api/*"]
+    // The Worker runs first so HTML and assets get security headers, then static files
+    // are served from ASSETS. /api/* is handled in src/worker.js.
+    "run_worker_first": true
   },
   "d1_databases": [
     {
@@ -23,6 +24,10 @@
     // Matches the Withings access-token lifetime (3h) so the sync never has to do a
     // cold refresh; also pulls in new weight/activity/sleep data without opening the app.
     "crons": ["0 */3 * * *"]
+  },
+  // Workers Logs. This does nothing until the next deploy; it is not enabled on the live Worker yet.
+  "observability": {
+    "enabled": true
   }
   // Secrets (not stored here):
   //   npx wrangler secret put API_TOKEN

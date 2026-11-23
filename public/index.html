@@ -22,13 +22,14 @@
         <p>Protocol tracker</p>
       </div>
       <div class="datebar">
-        <button id="prev" class="icon" aria-label="Previous day">&lsaquo;</button>
+        <button id="prev" class="icon" type="button" aria-label="Previous day">&lsaquo;</button>
         <div class="daytitle">
           <h1 id="dayTitle">Today</h1>
-          <button id="todayBtn" class="link" hidden>Back to today</button>
+          <p id="programLine" class="program-line"></p>
+          <button id="todayBtn" class="link" type="button" hidden>Back to today</button>
         </div>
-        <button id="next" class="icon" aria-label="Next day">&rsaquo;</button>
-        <button id="openSettings" class="icon" aria-label="Settings">&#9881;</button>
+        <button id="next" class="icon" type="button" aria-label="Next day">&rsaquo;</button>
+        <button id="openSettings" class="icon" type="button" aria-label="Settings">&#9881;</button>
       </div>
       <div class="scorebar">
         <p id="scoreText" class="score">&nbsp;</p>
@@ -37,67 +38,131 @@
       <div class="syncbar" id="syncBar" data-state="checking">
         <span class="dot" aria-hidden="true"></span>
         <span id="syncText">Checking Withings&hellip;</span>
+        <button type="button" id="syncConnect" class="link" hidden>Connect</button>
         <button type="button" id="syncNow" class="link" hidden>Sync now</button>
       </div>
     </div>
   </header>
 
   <main>
+    <section aria-labelledby="h-session">
+      <h2 id="h-session" class="sr-only">Today's session</h2>
+      <div id="session"></div>
+    </section>
+
     <section aria-labelledby="h-overview" class="overview-section">
       <h2 id="h-overview" class="sr-only">Overview</h2>
       <div id="overview" class="overview"></div>
     </section>
 
     <section aria-labelledby="h-habits">
-      <h2 id="h-habits">Habits</h2>
-      <p class="lede">Most score themselves from your meals and quick actions. Tap one to override it; a label on the right shows what set it.</p>
+      <h2 id="h-habits">Today</h2>
+      <p class="lede">Scored against the L.I.T. targets. Tap a row to override it.</p>
       <ul id="habitList" class="habits"></ul>
     </section>
 
-    <section aria-labelledby="h-quick">
-      <h2 id="h-quick">Right now</h2>
-      <p class="lede">One tap, stamped with the current time.</p>
-      <div class="quick" id="quick">
-        <button data-kind="first_meal">First meal</button>
-        <button data-kind="last_meal">Meal closed</button>
-        <button data-kind="walk">Walk done</button>
-        <button data-kind="training">Trained</button>
-      </div>
-      <p id="quickNote" class="hint" hidden>Quick actions use the current time, so they work on today only. Set meal times below to fix a past day.</p>
-      <ul id="eventList" class="events"></ul>
+    <section aria-labelledby="h-fuel">
+      <h2 id="h-fuel">Fuel</h2>
+      <p id="fuelLede" class="lede">Daily totals.</p>
+      <form id="checkinForm" class="stack-form">
+        <div class="form-grid">
+          <label>Calories <input name="kcal" type="number" inputmode="decimal" min="0" step="1"></label>
+          <label>Protein (g) <input name="protein_g" type="number" inputmode="decimal" min="0" step="1"></label>
+          <label>Fat (g) <input name="fat_g" type="number" inputmode="decimal" min="0" step="1"></label>
+          <label>Carbs (g) <input name="carbs_g" type="number" inputmode="decimal" min="0" step="1"></label>
+          <label>Water (oz) <input name="water_oz" type="number" inputmode="decimal" min="0" step="1"></label>
+          <label>Last meal <input name="last_meal_time" type="time"></label>
+          <label>Bed time <input name="bed_time" type="time"></label>
+        </div>
+        <div class="form-grid">
+          <label>Morning sun
+            <select name="morning_sun">
+              <option value="">Not logged</option>
+              <option value="1">Yes, 10–15 min</option>
+              <option value="0">No</option>
+            </select>
+          </label>
+          <label>Sugary drinks
+            <select name="sugary_drinks">
+              <option value="">Not logged</option>
+              <option value="0">None</option>
+              <option value="1">Had one</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit">Save fuel</button>
+      </form>
+      <p id="fuelSummary" class="totals"></p>
+      <details class="fold">
+        <summary>Individual meals</summary>
+        <div id="mealForms" class="meals"></div>
+        <button type="button" id="addMeal" class="ghost">Add a meal</button>
+      </details>
     </section>
 
-    <section aria-labelledby="h-meals">
-      <h2 id="h-meals">Meals</h2>
-      <p class="lede">Protein and carbs in grams, with the time you ate.</p>
-      <div id="mealForms" class="meals"></div>
-      <p id="mealTotals" class="totals"></p>
-    </section>
-
-    <section aria-labelledby="h-glucose">
-      <h2 id="h-glucose">Glucose</h2>
-      <div id="glucoseBody"></div>
+    <section aria-labelledby="h-body">
+      <h2 id="h-body">Body</h2>
+      <p class="lede">Weight, waist, and body fat stay on the overview. Blood pressure is entered here.</p>
+      <div id="bodyTiles"></div>
+      <form id="weightForm" class="stack-form">
+        <h3>Weigh-in for this day</h3>
+        <div class="form-grid">
+          <label>Weight (lb) <input name="weight" type="number" inputmode="decimal" step="0.1" min="20" required></label>
+          <label>Waist (in) <input name="waist" type="number" inputmode="decimal" step="0.1" min="0"></label>
+          <label>Body fat (%) <input name="body_fat_pct" type="number" inputmode="decimal" step="0.1" min="1" max="70"></label>
+        </div>
+        <button type="submit">Save weigh-in</button>
+      </form>
+      <form id="bpForm" class="stack-form">
+        <h3>Blood pressure</h3>
+        <div class="form-grid">
+          <label>Systolic <input name="systolic" type="number" inputmode="numeric" min="70" max="250" required></label>
+          <label>Diastolic <input name="diastolic" type="number" inputmode="numeric" min="40" max="150" required></label>
+          <label>Pulse <input name="pulse" type="number" inputmode="numeric" min="30" max="220"></label>
+        </div>
+        <button type="submit">Save reading</button>
+      </form>
+      <ul id="bpList" class="events"></ul>
     </section>
 
     <section aria-labelledby="h-withings">
       <h2 id="h-withings">Vitals</h2>
-      <p class="lede">Scale, activity and sleep, read from your Withings devices.</p>
+      <p class="lede">Scale, steps, heart rate, and sleep from Withings. A manual weigh-in wins until the next scale sync overwrites the weight.</p>
       <div id="withingsBody"></div>
+    </section>
+
+    <section id="glucoseSection" aria-labelledby="h-glucose" hidden>
+      <h2 id="h-glucose">Glucose</h2>
+      <div id="glucoseBody"></div>
+    </section>
+
+    <section aria-labelledby="h-progress">
+      <h2 id="h-progress">Progress</h2>
+      <p class="lede">The phase is 16 weeks. The six-month aim is about 200–210 lb and 20–24% body fat.</p>
+      <div id="progress"></div>
     </section>
 
     <section aria-labelledby="h-trend">
       <h2 id="h-trend">Trends</h2>
-      <p class="lede">Judge the trend, not a single day.</p>
+      <p class="lede">The last 14 days. Judge the line, not one reading.</p>
       <div class="tabs" id="trendTabs" role="tablist" aria-label="Trend metric"></div>
       <div id="trendBody"></div>
-      <form id="weightForm" class="weight">
-        <h3>Weigh-in for this day</h3>
-        <label>Weight <input name="weight" type="number" inputmode="decimal" step="0.1" min="20" placeholder="lb" required></label>
-        <label>Waist <input name="waist" type="number" inputmode="decimal" step="0.1" min="0" placeholder="in"></label>
-        <button type="submit">Save weigh-in</button>
-      </form>
     </section>
+
+    <details id="legacyEvents" class="fold" hidden>
+      <summary>Earlier quick logs</summary>
+      <ul id="eventList" class="events"></ul>
+    </details>
   </main>
+
+  <datalist id="bands">
+    <option value="light"></option>
+    <option value="medium"></option>
+    <option value="heavy"></option>
+    <option value="red"></option>
+    <option value="black"></option>
+    <option value="green"></option>
+  </datalist>
 
   <p id="toast" class="toast" role="status" aria-live="polite"></p>
 
@@ -106,44 +171,84 @@
     <p id="settingsMsg" role="status" class="hint"></p>
 
     <fieldset>
-      <legend>Access token</legend>
+      <legend>Access</legend>
       <label>Token <input id="tokenInput" type="password" autocomplete="off" spellcheck="false"></label>
       <button type="button" id="saveToken">Save token</button>
-      <p class="hint">Stored in this browser only. It is the API_TOKEN secret you set on the Worker.</p>
+      <button type="button" id="signOut" class="ghost">Sign out</button>
+      <p class="hint">Saved in an httpOnly cookie on this browser. Paste a new token to replace it. Phone automations still send Authorization: Bearer.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Withings</legend>
+      <button type="button" id="connectWithings">Connect Withings</button>
+      <p class="hint">Opens Withings with a one-time code. The API token is not put in the URL.</p>
     </fieldset>
 
     <form id="settingsForm">
       <fieldset>
-        <legend>Targets</legend>
-        <label>Carb cap (g/day) <input name="carb_cap" type="number" min="0" step="1"></label>
-        <label>Protein per meal (g) <input name="protein_per_meal" type="number" min="0" step="1"></label>
-        <label>Longest eating window (h) <input name="window_hours" type="number" min="1" step="0.5"></label>
-        <label>Sleep goal (h) <input name="sleep_hours" type="number" min="1" step="0.5"></label>
-        <label>Walks per day <input name="walks_needed" type="number" min="0" step="1"></label>
+        <legend>Daily targets</legend>
+        <label>Calories low <input name="kcal_low" type="number" min="0" step="10"></label>
+        <label>Calories high <input name="kcal_high" type="number" min="0" step="10"></label>
+        <label>Protein low (g) <input name="protein_day_low" type="number" min="0" step="1"></label>
+        <label>Protein high (g) <input name="protein_day_high" type="number" min="0" step="1"></label>
+        <label>Fat low (g) <input name="fat_low" type="number" min="0" step="1"></label>
+        <label>Fat high (g) <input name="fat_high" type="number" min="0" step="1"></label>
+        <label>Water low (oz) <input name="water_oz_low" type="number" min="0" step="1"></label>
+        <label>Water high (oz) <input name="water_oz_high" type="number" min="0" step="1"></label>
+        <label>Steps <input name="steps_goal" type="number" min="0" step="500"></label>
+        <label>Sleep low (h) <input name="sleep_hours" type="number" min="1" step="0.5"></label>
+        <label>Sleep high (h) <input name="sleep_hours_high" type="number" min="1" step="0.5"></label>
+        <label>Usual bedtime <input name="typical_bedtime" type="time"></label>
         <label>Time zone <input name="tz" type="text" spellcheck="false"></label>
       </fieldset>
       <fieldset>
-        <legend>Training days</legend>
-        <div id="trainingDays" class="checks"></div>
+        <legend>Program</legend>
+        <label>Program start <input name="program_start" type="date"></label>
+        <label>Standard week starts <input name="standard_start" type="date"></label>
+        <label>Offset week from <input name="offset_from" type="date"></label>
+        <label>Offset week through <input name="offset_to" type="date"></label>
+        <label>Ramp weeks (2 sets) <input name="strength_ramp_weeks" type="number" min="0" step="1"></label>
+        <label>Phase length (weeks) <input name="phase_weeks" type="number" min="1" step="1"></label>
+        <label>Goal weight low <input name="goal_weight_low" type="number" min="50" step="1"></label>
+        <label>Goal weight high <input name="goal_weight_high" type="number" min="50" step="1"></label>
+        <label>Goal body fat low <input name="goal_bf_low" type="number" min="1" step="0.5"></label>
+        <label>Goal body fat high <input name="goal_bf_high" type="number" min="1" step="0.5"></label>
+        <label>Anchor weight (optional) <input name="start_weight" type="number" min="50" step="0.1" placeholder="blank uses first weigh-in"></label>
       </fieldset>
       <fieldset>
-        <legend>Habits you are tracking</legend>
+        <legend>Habits on the score</legend>
         <div id="activeHabits" class="checks"></div>
-        <p class="hint">Ramp in: start with window, walks and protein, then add the rest. Untracked habits are hidden and don't count toward the score.</p>
+        <details class="fold">
+          <summary>Earlier habits</summary>
+          <p class="hint">Hidden by default. History stays either way.</p>
+          <div id="legacyHabits" class="checks"></div>
+        </details>
       </fieldset>
+      <details class="fold">
+        <summary>Previous protocol</summary>
+        <div class="form-grid">
+          <label>Carb cap (g) <input name="carb_cap" type="number" min="0" step="1"></label>
+          <label>Protein per meal (g) <input name="protein_per_meal" type="number" min="0" step="1"></label>
+          <label>Eating window (h) <input name="window_hours" type="number" min="1" step="0.5"></label>
+          <label>Walks per day <input name="walks_needed" type="number" min="0" step="1"></label>
+        </div>
+        <p class="hint">Training days only affect the old Strength or HIIT habit.</p>
+        <div id="trainingDays" class="checks"></div>
+      </details>
+      <label class="checkline"><input name="show_glucose" type="checkbox"> Show glucose on the day page</label>
       <button type="submit">Save settings</button>
     </form>
 
-    <fieldset>
-      <legend>Glucose data</legend>
-      <label>Import a Dexcom Clarity CSV <input id="csvFile" type="file" accept=".csv,text/csv"></label>
+    <details class="fold">
+      <summary>Glucose import and export</summary>
+      <label>Dexcom Clarity CSV <input id="csvFile" type="file" accept=".csv,text/csv"></label>
       <p id="importMsg" class="hint" role="status"></p>
-      <button type="button" id="exportBtn" class="ghost">Download last 28 days as CSV</button>
-    </fieldset>
+      <button type="button" id="exportBtn" class="ghost">Download CSV</button>
+    </details>
 
     <button type="button" id="closeSettings" class="ghost">Close</button>
   </dialog>
 
-  <script src="/app.js"></script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>

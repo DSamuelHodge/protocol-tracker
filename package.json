@@ -1,10 +1,10 @@
 {
   "name": "protocol-tracker",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Single-user L.I.T. protocol tracker on a Cloudflare Worker and D1.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --experimental-sqlite --test",
+    "dev": "wrangler dev"
   },
   "keywords": [],
   "author": "",
